@@ -8,8 +8,8 @@ Este repositório contém a implementação da primeira parte do trabalho práti
 * **`times.c` / `times.h`**: Implementação do TAD para times e gerenciamento do banco de times.
 * **`partidas.c` / `partidas.h`**: Implementação do TAD para partidas e consultas relacionadas.
 * **`Makefile`**: Arquivo para automação da compilação.
-* **`times.csv`**: Base de dados dos times.
-* **`partidas_*.csv`**: Bases de dados das partidas (vazio, parcial e completo) para diferentes cenários de teste.
+* **`bd_times.csv`**: Base de dados dos times.
+* **`bd_partidas.csv`**: Bases de dados das partidas.
 
 ## Tipos Abstratos de Dados (TADs)
 
