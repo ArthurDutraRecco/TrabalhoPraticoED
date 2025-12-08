@@ -9,6 +9,31 @@
 #define STRINGIFY(x) #x
 #define TO_STRING(x) STRINGIFY(x)
 
+// Define o TAD para um time
+struct time
+{
+    int ID; // Identificador do time
+    char nome[50];
+    int V; // Vitórias
+    int E; // Empates
+    int D; // Derrotas
+    int GM; // Gols marcados
+    int GS; // Gols sofridos
+};
+
+// Define o TAD para o nó da lista encadenada de times
+typedef struct time_node {
+    Time data;
+    struct time_node* next;
+} TimeNode;
+
+// Define o TAD para o vetor de todos os times
+struct bdtimes
+{
+    TimeNode* inicio;
+    int num_times;
+};
+
 // Retorna a pontuação de um time
 int pontos_ganhos(Time *time)
 {
@@ -34,6 +59,36 @@ int largura_visual_utf8(const char *s)
     return largura;
 }
 
+int time_get_id(Time* t) { return t->ID; }
+char* time_get_nome(Time* t) { return t->nome; }
+int time_get_pontos(Time* t) { return pontos_ganhos(t); }
+
+void time_registrar_resultado(Time* t, int gols_pro, int gols_contra) {
+    t->GM += gols_pro;
+    t->GS += gols_contra;
+    
+    if (gols_pro > gols_contra) {
+        t->V++;
+    } else if (gols_pro < gols_contra) {
+        t->D++;
+    } else {
+        t->E++;
+    }
+}
+
+// Função interna para inserir no início da lista encadeada
+static void bdt_inserir_no_inicio(BDTimes* bdt, Time dados_time) {
+    TimeNode* node = (TimeNode*)malloc(sizeof(TimeNode));
+    if (node == NULL) {
+        printf("Erro ao alocar memória para um nó da LinkedList Times.\n");
+        exit(1);
+    }
+    node->data = dados_time;
+    node->next = bdt->inicio;
+    bdt->inicio = node;
+    bdt->num_times++;
+}
+
 // Aloca, carrega os times do CSV e retorna o ponteiro
 BDTimes* bdt_carregar(const char* arquivo_times)
 {
@@ -43,30 +98,26 @@ BDTimes* bdt_carregar(const char* arquivo_times)
         return NULL;
     }
     
-    char linha[128];
-
-    fgets(linha, sizeof(linha), times); // Descarta o cabeçalho
-    
     BDTimes *bdt = (BDTimes*)malloc(sizeof(BDTimes));
     if (bdt == NULL) {
         printf("Erro ao alocar memória para a estrutura BDTimes.\n");
         fclose(times);
         return NULL;
     }
+    bdt->inicio = NULL;
+    bdt->num_times = 0;
     
-    int i = 0;
+    char linha[128];
+    fgets(linha, sizeof(linha), times); // Descarta o cabeçalho    
     
-    while (fgets(linha, sizeof(linha), times) && i < sizeof(bdt->times)/sizeof(bdt->times[0])) {
-        sscanf(linha, "%d,%49[^\n]", &bdt->times[i].ID, bdt->times[i].nome);
-        bdt->times[i].V = 0;
-        bdt->times[i].E = 0;    
-        bdt->times[i].D = 0;
-        bdt->times[i].GM = 0;
-        bdt->times[i].GS = 0;
-        i++;
-    }
+    while (fgets(linha, sizeof(linha), times)) {
+        Time t;
+        t.V = 0; t.E = 0; t.D = 0; t.GM = 0; t.GS = 0;
+        
+        sscanf(linha, "%d,%49[^\n]", &t.ID, t.nome);
 
-    bdt->num_times = i;
+        bdt_inserir_no_inicio(bdt, t);
+    }
     
     fclose(times);
 
@@ -74,96 +125,72 @@ BDTimes* bdt_carregar(const char* arquivo_times)
 }
 
 // Libera a memória alocada para BDTimes
-void bdt_liberar(BDTimes* bdt)
-{
-    if (bdt != NULL) {
-        free(bdt);
+void bdt_liberar(BDTimes* bdt) {
+    if (bdt == NULL) return;
+
+    TimeNode* p = bdt->inicio;
+    while (p != NULL) {
+        TimeNode* t = p->next;
+        free(p);
+        p = t;
     }
+    free(bdt);
 }
 
 // Busca um time pelo ID
-Time* bdt_busca_por_id(BDTimes* bdt, int id)
-{
-    for (int i = 0; i < bdt->num_times; i++) {
-        if (bdt->times[i].ID == id) {
-            return &bdt->times[i];
+Time* bdt_busca_por_id(BDTimes* bdt, int id) {
+    TimeNode* p = bdt->inicio;
+    while (p != NULL) {
+        if (p->data.ID == id) {
+            return &p->data;
         }
+        p = p->next;
     }
     return NULL;
 }
 
-// Processa as partidas e atualiza os dados dos times
-void bdt_processar_partidas(BDTimes* bdt, BDPartidas* bdp)
-{
-    if (bdt == NULL || bdp == NULL) return;
-
-    for (int i = 0; i < bdp->num_partidas; i++) {
-        Partida* partida = &bdp->partidas[i];
-        
-        Time* time_1 = bdt_busca_por_id(bdt, partida->time1_id);
-        Time* time_2 = bdt_busca_por_id(bdt, partida->time2_id);
-
-        // Pular partidas com times inválidos
-        if (time_1 == NULL || time_2 == NULL) {
-            continue;
-        }
-        
-        time_1->GM += partida->gols_time1;
-        time_1->GS += partida->gols_time2;
-        
-        time_2->GM += partida->gols_time2;
-        time_2->GS += partida->gols_time1;
-        
-        if (partida->gols_time1 > partida->gols_time2) {
-            time_1->V++;
-            time_2->D++;
-        } else if (partida->gols_time1 < partida->gols_time2) {
-            time_2->V++;
-            time_1->D++;
-        } else {
-            time_1->E++;
-            time_2->E++;
-        }
+// Zera as estatísticas de todos os times
+void bdt_zerar_estatisticas(BDTimes* bdt) {
+    TimeNode* p = bdt->inicio;  
+    while (p != NULL) {
+        p->data.V = 0;
+        p->data.E = 0;
+        p->data.D = 0;
+        p->data.GM = 0;
+        p->data.GS = 0;
+        p = p->next;
     }
 }
 
 // Implementa a funcionalidade 1 - Consultar time
-void bdt_consultar_time(BDTimes* bdt)
-{
+void bdt_consultar_time(BDTimes* bdt) {
     char prefixo[50];
     printf("\nDigite o nome ou prefixo do time: ");
-    scanf("%49s", prefixo);
+    scanf(" %49[^\n]", prefixo);
 
     int encontrado = 0;
+    TimeNode* p = bdt->inicio;
 
-    for (int i = 0; i < bdt->num_times; i++) {
-        if (strncmp(bdt->times[i].nome, prefixo, strlen(prefixo)) == 0) {
+    while (p != NULL) {
+        if (strncmp(p->data.nome, prefixo, strlen(prefixo)) == 0) {
             if (!encontrado) {
                 printf("\n%-3s %-" TO_STRING(PADDING) "s %-3s %-3s %-3s %-3s %-3s %-3s %-3s\n",
                        "ID", "Time", "V", "E", "D", "GM", "GS", "S", "PG");
                 encontrado = 1;
-                }
+            }
 
-            Time* time = &bdt->times[i];
-            int saldo = saldo_gols(time);
-            int pontos = pontos_ganhos(time);
-
-            int largura_nome = largura_visual_utf8(time->nome);
+            Time* t = &p->data;
+            int s = saldo_gols(t);
+            int pg = pontos_ganhos(t);
+            
+            int largura_nome = largura_visual_utf8(t->nome);
             int padding = PADDING - largura_nome;
             if (padding < 0) padding = 0;
 
             printf("%-3d %s%*s %-3d %-3d %-3d %-3d %-3d %-3d %-3d\n",
-                time->ID, 
-                time->nome,
-                padding, "",
-                time->V,
-                time->E,
-                time->D,
-                time->GM, 
-                time->GS, 
-                saldo, 
-                pontos);
+                t->ID, t->nome, padding, "", t->V, t->E, t->D, t->GM, t->GS, s, pg);
         }
+        p = p->next;
     }
 
     if (!encontrado) {
@@ -171,31 +198,83 @@ void bdt_consultar_time(BDTimes* bdt)
     }
 }
 
+
+// Ordena a lista de times de acordo com a classificação do campeonato.
+static void bdt_ordenar_classificacao(BDTimes* bdt) {
+    if (bdt->inicio == NULL) return;
+
+    int trocou;
+    TimeNode *ptr1;
+    TimeNode *lptr = NULL;
+
+    do {
+        trocou = 0;
+        ptr1 = bdt->inicio;
+
+        while (ptr1->next != lptr) {
+            Time *t1 = &ptr1->data;
+            Time *t2 = &ptr1->next->data;
+
+            // Critérios de Classificação:
+            // 1. Pontos Ganhos (Decrescente)
+            // 2. Vitórias (Decrescente)
+            // 3. Saldo de Gols (Decrescente)
+            
+            int pg1 = pontos_ganhos(t1);
+            int pg2 = pontos_ganhos(t2);
+            int v1 = t1->V;
+            int v2 = t2->V;
+            int s1 = saldo_gols(t1);
+            int s2 = saldo_gols(t2);
+
+            int deve_trocar = 0;
+
+            if (pg1 < pg2) {
+                deve_trocar = 1;
+            } else if (pg1 == pg2) {
+                if (v1 < v2) {
+                    deve_trocar = 1;
+                } else if (v1 == v2) {
+                    if (s1 < s2) {
+                        deve_trocar = 1;
+                    }
+                }
+            }
+
+            if (deve_trocar) {
+                Time temp = ptr1->data;
+                ptr1->data = ptr1->next->data;
+                ptr1->next->data = temp;
+                trocou = 1;
+            }
+            ptr1 = ptr1->next;
+        }
+        lptr = ptr1;
+    } while (trocou);
+}
+
 // Implementa a funcionalidade 6 - Imprimir tabela de classificação
 void bdt_imprimir_tabela(BDTimes* bdt) {
-    printf("\nImprimindo classificação...\n");
+    bdt_ordenar_classificacao(bdt);
+
+    printf("\nImprimindo classificação (ordenada)...\n");
 
     printf("\n%-3s %-" TO_STRING(PADDING) "s %-3s %-3s %-3s %-3s %-3s %-3s %-3s\n",
            "ID", "Time", "V", "E", "D", "GM", "GS", "S", "PG");
-    for (int i = 0; i < bdt->num_times; i++) {
-        Time* time = &bdt->times[i];
-        int saldo = saldo_gols(time);
-        int pontos = pontos_ganhos(time);
 
-        int largura_nome = largura_visual_utf8(time->nome);
+    TimeNode* p = bdt->inicio;
+    while (p != NULL) {
+        Time* t = &p->data;
+        int s = saldo_gols(t);
+        int pg = pontos_ganhos(t);
+
+        int largura_nome = largura_visual_utf8(t->nome);
         int padding = PADDING - largura_nome;
         if (padding < 0) padding = 0;
 
         printf("%-3d %s%*s %-3d %-3d %-3d %-3d %-3d %-3d %-3d\n",
-               time->ID, 
-               time->nome,
-               padding, "",
-               time->V,
-               time->E,
-               time->D,
-               time->GM, 
-               time->GS, 
-               saldo, 
-               pontos);
+               t->ID, t->nome, padding, "", t->V, t->E, t->D, t->GM, t->GS, s, pg);
+        
+        p = p->next;
     }
 }

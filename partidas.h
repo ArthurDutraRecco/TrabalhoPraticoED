@@ -1,25 +1,14 @@
 #ifndef PARTIDAS_H
 #define PARTIDAS_H
 
-// Declaração antecipada para evitar dependência circular...
+// Declaração antecipada de BDTimes para evitar dependência circular
 typedef struct bdtimes BDTimes;
 
-// Define o TAD para uma partida
-typedef struct partida
-{
-    int ID; // Identificador da partida
-    int time1_id;  // ID do Time1
-    int time2_id;  // ID do Time2
-    int gols_time1; // Gols do Time1
-    int gols_time2; // Gols do Time2
-} Partida;
+// Nomeia o TAD para uma partida
+typedef struct partida Partida;
 
-// Define o TAD para o vetor de todas as partidas
-typedef struct bdpartidas
-{
-    Partida partidas[50]; // Vetor estático para 45 partidas com margem
-    int num_partidas;
-} BDPartidas;
+// Nomeia o TAD para o vetor de todas as partidas
+typedef struct bdpartidas BDPartidas;
 
 // Aloca, carrega as partidas do CSV e retorna o ponteiro
 BDPartidas* bdp_carregar(const char* arquivo_partidas);
@@ -29,5 +18,16 @@ void bdp_liberar(BDPartidas* bdp);
 
 // Implementa a funcionalidade 2 - Consultar partidas
 void bdp_consultar_partidas(BDPartidas* bdp, BDTimes* bdt);
+
+// Implementa a funcionalidade 3 - Atualizar partida
+int bdp_atualizar_partida(BDPartidas* bdp, BDTimes* bdt);
+
+// Implementa a funcionalidade 4 - Remover partida
+int bdp_remover_partida(BDPartidas* bdp, BDTimes* bdt);
+
+// Implementa a funcionalidade 5 - Inserir partida
+int bdp_inserir_partida(BDPartidas* bdp, BDTimes* bdt);
+
+void bdp_processar_tabela(BDPartidas* bdp, BDTimes* bdt);
 
 #endif

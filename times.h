@@ -1,26 +1,11 @@
 #ifndef TIMES_H
 #define TIMES_H
 
-#include "partidas.h"
+// Dá nome ao TAD de um time
+typedef struct time Time;
 
-// Define o TAD para um time
-typedef struct time
-{
-    int ID; // Identificador do time
-    char nome[50];
-    int V; // Vitórias
-    int E; // Empates
-    int D; // Derrotas
-    int GM; // Gols marcados
-    int GS; // Gols sofridos
-} Time;
-
-// Define o TAD para o vetor de todos os times
-typedef struct bdtimes
-{
-    Time times[30]; // Vetor estático para 30 times
-    int num_times;
-} BDTimes;
+// Dá nome ao TAD de um nó da lista encadeada de times
+typedef struct bdtimes BDTimes;
 
 // Retorna a pontuação de um time
 int pontos_ganhos(Time *time);
@@ -37,9 +22,6 @@ BDTimes* bdt_carregar(const char* arquivo_times);
 // Libera a memória alocada para BDTimes
 void bdt_liberar(BDTimes* bdt);
 
-// Processa as partidas e atualiza os dados dos times
-void bdt_processar_partidas(BDTimes* bdt, BDPartidas* bdp);
-
 // Busca um time pelo ID
 Time* bdt_busca_por_id(BDTimes* bdt, int id); 
 
@@ -48,5 +30,16 @@ void bdt_consultar_time(BDTimes* bdt);
 
 // Implementa a funcionalidade 6 - Imprimir tabela de classificação
 void bdt_imprimir_tabela(BDTimes* bdt);
+
+// Zera as estatísticas de todos os times
+void bdt_zerar_estatisticas(BDTimes* bdt);
+
+// Funções de acesso aos dados de Time
+int time_get_id(Time* t);
+char* time_get_nome(Time* t);
+int time_get_pontos(Time* t);
+
+// Atualiza os dados do time com base em um resultado de jogo
+void time_registrar_resultado(Time* t, int GM, int GS);
 
 #endif
